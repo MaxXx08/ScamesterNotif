@@ -8,23 +8,32 @@ from googleapiclient.discovery import build
 
 # -------- CONFIG --------
 SCOPES = ['https://www.googleapis.com/auth/drive.metadata.readonly']
+
 FOLDER_IDS = [
     '1EeAvHS1nokOsfLOxYkIEVZv3TdkH1E6h',
     '10tnMfOleuctSn23MqLQ6OmzVep_-YOMY'
 ]
-DISCORD_WEBHOOK = 'https://discord.com/api/webhooks/1494319720483000353/-V3eYBtculecVXR3rykI1qxwDGEE2mgwahQButUijZ4rUAULGGj5DjbO__n3s5226pdG'
+
+DISCORD_WEBHOOK = 'https://discord.com/api/webhooks/1494332113376251918/X4ZshMaQCZtJjqlrXQmWRn_YBVcNYpK-Cn3gvv8zZy_Gu9wtwMU9TNVOiucZTf9LSkwY'
 CHECK_INTERVAL = 30
 # ------------------------
 
 def authenticate():
     creds = None
 
+    # Load saved token
     if os.path.exists('token.json'):
         creds = Credentials.from_authorized_user_file('token.json', SCOPES)
 
+    # If no valid creds → MUST use console flow (Railway-safe)
     if not creds or not creds.valid:
-        flow = InstalledAppFlow.from_client_secrets_file('credentials.json', SCOPES)
-        creds = flow.run_local_server(port=0)
+        flow = InstalledAppFlow.from_client_secrets_file(
+            'credentials.json',
+            SCOPES
+        )
+
+        # ✅ FIX FOR RAILWAY (NO BROWSER)
+        creds = flow.run_console()
 
         with open('token.json', 'w') as token:
             token.write(creds.to_json())
@@ -43,15 +52,14 @@ def get_files(service):
             fields="files(id, name, modifiedTime)"
         ).execute()
 
-        files = results.get('files', [])
-        all_files.extend(files)
+        all_files.extend(results.get('files', []))
 
     return all_files
 
 def main():
     service = authenticate()
     last_state = {}
-    first_run = True  # ✅ prevents spam on startup
+    first_run = True
 
     print("Monitoring started...")
 
@@ -63,30 +71,26 @@ def main():
             name = file['name']
             modified = file['modifiedTime']
 
-            # 🆕 NEW FILE DETECTED
+            # 🆕 NEW FILE
             if file_id not in last_state:
                 last_state[file_id] = modified
 
                 if not first_run:
-                    link = f"https://drive.google.com/file/d/{file_id}/view"
-                    msg = f"🆕 New file added: **{name}**\n🔗 {link}"
-
+                    msg = f"🆕 New file: **{name}**"
                     send_to_discord(msg)
-                    print("New file:", name)
+                    print("New:", name)
 
                 continue
 
-            # ✏️ FILE UPDATED
+            # ✏️ UPDATE FILE
             if last_state[file_id] != modified:
                 last_state[file_id] = modified
 
-                link = f"https://drive.google.com/file/d/{file_id}/view"
-                msg = f"✏️ Updated: **{name}**\n🔗 {link}"
-
+                msg = f"✏️ Updated: **{name}**"
                 send_to_discord(msg)
                 print("Updated:", name)
 
-        first_run = False  # ✅ after first loop
+        first_run = False
         time.sleep(CHECK_INTERVAL)
 
 if __name__ == "__main__":
