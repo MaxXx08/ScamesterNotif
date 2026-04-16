@@ -14,25 +14,23 @@ FOLDER_IDS = [
     '10tnMfOleuctSn23MqLQ6OmzVep_-YOMY'
 ]
 
-DISCORD_WEBHOOK = 'https://discord.com/api/webhooks/1494332113376251918/X4ZshMaQCZtJjqlrXQmWRn_YBVcNYpK-Cn3gvv8zZy_Gu9wtwMU9TNVOiucZTf9LSkwY'
+DISCORD_WEBHOOK = 'https://discord.com/api/webhooks/1494334403201994802/xZ-TELG1LV-re6tYrACZVofpCOCLW6LWMJLwxWTUjr15iMRQZ2gc65izTaBPJz_oU7cf'
 CHECK_INTERVAL = 30
 # ------------------------
 
 def authenticate():
     creds = None
 
-    # Load saved token
     if os.path.exists('token.json'):
         creds = Credentials.from_authorized_user_file('token.json', SCOPES)
 
-    # If no valid creds → MUST use console flow (Railway-safe)
     if not creds or not creds.valid:
         flow = InstalledAppFlow.from_client_secrets_file(
             'credentials.json',
             SCOPES
         )
 
-        # ✅ FIX FOR RAILWAY (NO BROWSER)
+        # Railway-safe login (no browser needed)
         creds = flow.run_console()
 
         with open('token.json', 'w') as token:
@@ -76,17 +74,19 @@ def main():
                 last_state[file_id] = modified
 
                 if not first_run:
-                    msg = f"🆕 New file: **{name}**"
+                    link = f"https://drive.google.com/file/d/{file_id}/view"
+                    msg = f"🆕 New file: **{name}**\n🔗 {link}"
                     send_to_discord(msg)
                     print("New:", name)
 
                 continue
 
-            # ✏️ UPDATE FILE
+            # ✏️ UPDATED FILE
             if last_state[file_id] != modified:
                 last_state[file_id] = modified
 
-                msg = f"✏️ Updated: **{name}**"
+                link = f"https://drive.google.com/file/d/{file_id}/view"
+                msg = f"✏️ Updated: **{name}**\n🔗 {link}"
                 send_to_discord(msg)
                 print("Updated:", name)
 
